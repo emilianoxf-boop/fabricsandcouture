@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="FFC">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<title>FFC · stock</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<style>
+:root{
+  --ink:#0a0a0a;--ink2:#555;--ink3:#999;--ink4:#ccc;
+  --paper:#fafaf8;--paper2:#f4f3f0;--paper3:#eceae5;
+  --rule:rgba(0,0,0,.1);--rule2:rgba(0,0,0,.06);
+  --accent:#0a0a0a;--accent-inv:#fafaf8;
+  --mono:'DM Mono',monospace;--sans:'DM Sans',sans-serif;
+  --r:4px;--r2:8px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --ink:#f0ede8;--ink2:#999;--ink3:#666;--ink4:#333;
+    --paper:#111;--paper2:#1a1a1a;--paper3:#222;
+    --rule:rgba(255,255,255,.1);--rule2:rgba(255,255,255,.06);
+    --accent:#f0ede8;--accent-inv:#111;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{font-family:var(--sans);font-size:14px;color:var(--ink);background:var(--paper);line-height:1.5}
+input,select,textarea,button{font-family:var(--sans);font-size:13px;color:var(--ink)}
+input,select,textarea{
+  background:transparent;border:none;border-bottom:1px solid var(--rule);
+  padding:8px 0;width:100%;outline:none;border-radius:0;
+  -webkit-appearance:none;appearance:none;
+}
+input:focus,select:focus,textarea:focus{border-bottom-color:var(--ink)}
+textarea{resize:none;min-height:72px;padding:8px 0}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23999'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 4px center;padding-right:20px}
+
+.app{display:flex;flex-direction:column;height:100vh;max-height:100dvh}
+.hdr{padding:18px 20px 14px;border-bottom:1px solid var(--rule2);flex-shrink:0;display:flex;align-items:flex-end;justify-content:space-between}
+.hdr-mark{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--ink);letter-spacing:.06em}
+.hdr-mark span{color:var(--ink3)}
+.hdr-kpi{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:right;line-height:1.6}
+
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.pad{padding:20px 20px 100px}
+
+.nav{flex-shrink:0;border-top:1px solid var(--rule2);display:grid;grid-template-columns:repeat(4,1fr);background:var(--paper);padding-bottom:env(safe-area-inset-bottom)}
+.nb{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 4px 10px;font-size:10px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--ink3);background:none;border:none;cursor:pointer;transition:color .15s;font-family:var(--sans)}
+.nb svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.nb.on{color:var(--ink)}
+.view{display:none}.view.on{display:block}
+
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule2);border:1px solid var(--rule2);border-radius:var(--r2);overflow:hidden;margin-bottom:24px}
+.kpi{background:var(--paper);padding:14px 16px}
+.kpi-v{font-family:var(--mono);font-size:22px;font-weight:300}
+.kpi-l{font-size:11px;color:var(--ink3);margin-top:2px;letter-spacing:.02em}
+
+.sec-label{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-bottom:12px}
+
+.shelf{border:1px solid var(--rule);border-radius:var(--r2);overflow:hidden;margin-bottom:10px}
+.shelf-hd{padding:10px 14px;background:var(--paper2);border-bottom:1px solid var(--rule2);display:flex;align-items:center;justify-content:space-between}
+.shelf-name{font-family:var(--mono);font-size:12px;letter-spacing:.04em}
+.shelf-ct{font-size:11px;color:var(--ink3)}
+.shelf-body{padding:10px 12px}
+.rip{margin-bottom:8px}
+.rip:last-child{margin-bottom:0}
+.rip-l{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink4);margin-bottom:5px}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.slot{border:1px solid var(--rule);border-radius:var(--r);padding:8px 10px;cursor:pointer;min-height:52px;transition:border-color .12s,background .12s}
+.slot:active{background:var(--paper2)}
+.slot.occ{background:var(--paper2)}
+.slot.sel{border-color:var(--ink);background:var(--paper3)}
+.slot-sd{font-family:var(--mono);font-size:8px;color:var(--ink3);letter-spacing:.06em;margin-bottom:2px}
+.slot-nm{font-size:11px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.3}
+.slot-sb{font-size:10px;color:var(--ink3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot-bar{height:2px;background:var(--rule2);border-radius:1px;margin-top:5px}
+.slot-fill{height:100%;border-radius:1px;background:var(--ink4)}
+.slot-fill.low{background:#c8813a}
+.slot-fill.out{background:#c84a3a}
+.slot-mt{display:flex;align-items:center;justify-content:center;height:32px;font-size:20px;color:var(--rule)}
+
+.field{display:flex;flex-direction:column;gap:3px;margin-bottom:16px}
+.field-l{font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:var(--r);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--rule);background:transparent;color:var(--ink);letter-spacing:.01em;transition:all .12s}
+.btn:active{opacity:.7}
+.btn-solid{background:var(--ink);color:var(--accent-inv);border-color:var(--ink)}
+.btn-full{width:100%;margin-top:4px}
+.btn-sm{font-size:11px;padding:6px 12px}
+
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:2px;border:1px solid var(--rule);color:var(--ink2);background:var(--paper2);white-space:nowrap}
+.tag-ok{border-color:rgba(30,120,80,.3);color:#1e7850;background:rgba(30,120,80,.07)}
+.tag-low{border-color:rgba(200,129,58,.35);color:#a06030;background:rgba(200,129,58,.08)}
+.tag-out{border-color:rgba(200,74,58,.35);color:#a03428;background:rgba(200,74,58,.08)}
+
+.divider{height:1px;background:var(--rule2);margin:20px 0}
+
+.sheet-bg{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);backdrop-filter:blur(2px)}
+.sheet{position:absolute;bottom:0;left:0;right:0;background:var(--paper);border-radius:14px 14px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:92dvh;overflow-y:auto}
+.sheet-pull{width:32px;height:3px;background:var(--rule);border-radius:2px;margin:0 auto 20px}
+.sheet-title{font-family:var(--mono);font-size:14px;font-weight:400;letter-spacing:.03em;margin-bottom:4px}
+.sheet-sub{font-size:12px;color:var(--ink3);margin-bottom:20px}
+
+.det-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--rule2);font-size:13px}
+.det-row:last-child{border:none}
+.det-k{color:var(--ink3);font-size:12px}
+.det-v{font-weight:400;text-align:right;font-family:var(--mono);font-size:12px}
+
+.lcard{background:#fff;color:#111;border:1px solid #222;border-radius:4px;padding:10px 12px 8px;font-family:'Courier New',monospace}
+.lbl-s{font-size:7px;letter-spacing:.1em;text-transform:uppercase;color:#888}
+.lbl-n{font-size:13px;font-weight:700;line-height:1.1;margin:2px 0 1px}
+.lbl-b{font-size:9px;color:#555;margin-bottom:4px}
+.lbl-hr{border:none;border-top:1px solid #ddd;margin:4px 0}
+.lbl-g{display:grid;grid-template-columns:1fr 1fr;gap:1px 8px}
+.lbl-k{font-size:7px;text-transform:uppercase;letter-spacing:.05em;color:#888}
+.lbl-v{font-weight:700;font-size:10px;color:#111;margin-bottom:3px}
+.lbl-pos{font-size:10px;font-weight:700;padding:2px 5px;border:1px solid #999;border-radius:2px;display:inline-block;margin-top:3px}
+.lbl-bc{text-align:center;margin-top:4px}
+
+.lcard-out{background:var(--paper2);border:1px solid var(--rule);border-radius:var(--r2);padding:14px 16px;margin-bottom:10px}
+.lcard-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;gap:8px}
+.lcard-nm{font-weight:500;font-size:13px}
+.lcard-sub{font-size:11px;color:var(--ink3);margin-top:2px}
+.lcard-text{font-size:13px;line-height:1.65;white-space:pre-wrap;word-break:break-word;color:var(--ink)}
+
+
+.lang-row{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
+.lang-btn{padding:8px 4px;font-size:11px;font-weight:500;cursor:pointer;background:transparent;color:var(--ink3);border:none;letter-spacing:.03em;font-family:var(--sans)}
+.lang-btn:not(:last-child){border-right:1px solid var(--rule)}
+.lang-btn.on{background:var(--ink);color:var(--accent-inv)}
+
+.plat-row{display:flex;gap:16px;margin-top:2px}
+.plat-row label{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--ink2)}
+
+.list-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--rule2)}
+.list-row:last-child{border:none}
+.list-main{flex:1;min-width:0}
+.list-nm{font-weight:500;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-sb{font-size:11px;color:var(--ink3);margin-top:2px}
+
+.empty{text-align:center;padding:40px 20px;color:var(--ink3);font-size:13px;font-family:var(--mono);font-weight:300}
+
+.note-box{border:1px solid var(--rule);border-radius:var(--r2);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--ink3);line-height:1.6;font-style:italic}
+
+.loc-ok{font-size:12px;color:#1e7850;font-family:var(--mono)}
+.loc-warn{font-size:12px;color:#a06030;font-family:var(--mono)}
+.loc-empty{font-size:12px;color:var(--ink3);font-family:var(--mono)}
+
+@media print{
+  .hdr,.nav,.sheet-bg{display:none!important}
+  body{background:white}
+  .pad{padding:0}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="hdr">
+    <div>
+      <div class="hdr-mark">fabricsforcouture <span>/ stock</span></div>
+    </div>
+    <div class="hdr-kpi" id="hdr-kpi"></div>
+  </header>
+
+  <div class="scroll">
+    <div class="pad">
+
+      <!-- MAP -->
+      <div id="v-map" class="view on">
+        <div class="kpis">
+          <div class="kpi"><div class="kpi-v" id="s-tot">0</div><div class="kpi-l">tessuti</div></div>
+          <div class="kpi"><div class="kpi-v" id="s-free">18</div><div class="kpi-l">posizioni libere</div></div>
+          <div class="kpi"><div class="kpi-v" id="s-m">0 m</div><div class="kpi-l">metraggio</div></div>
+          <div class="kpi"><div class="kpi-v" id="s-val">£0</div><div class="kpi-l">valore stock</div></div>
+        </div>
+        <div class="sec-label">magazzino lecco</div>
+        <div id="warehouse"></div>
+        <div style="margin-top:16px">
+          <button class="btn btn-solid btn-full" onclick="openAdd()">+ aggiungi tessuto</button>
+        </div>
+      </div>
+
+      <!-- STOCK -->
+      <div id="v-stock" class="view">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div class="sec-label" style="margin:0">registro completo</div>
+          <button class="btn btn-sm" onclick="exportCSV()">esporta csv</button>
+        </div>
+        <div id="stock-list"></div>
+      </div>
+
+      <!-- LISTING -->
+      <div id="v-listing" class="view">
+        <div class="sec-label">genera annuncio</div>
+
+        <div class="field">
+          <div class="field-l">tessuto</div>
+          <select id="l-pick" onchange="prefillDesc()"><option value="">— seleziona —</option></select>
+        </div>
+
+        <div class="field">
+          <div class="field-l">piattaforma</div>
+          <div class="plat-row">
+            <label><input type="checkbox" id="p-vinted" checked> Vinted</label>
+            <label><input type="checkbox" id="p-ebay" checked> eBay</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-l">lingua</div>
+          <div class="lang-row">
+            <button class="lang-btn on" id="lng-en" onclick="setLang('en')">English</button>
+            <button class="lang-btn" id="lng-it" onclick="setLang('it')">Italiano</button>
+            <button class="lang-btn" id="lng-bi" onclick="setLang('bi')">Bilingue</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="field-l">descrizione prodotto</div>
+          <textarea id="l-desc" placeholder="Descrivi il tessuto: handle, aspetto, uso consigliato, stato (nuovo, mai tagliato…)"></textarea>
+        </div>
+
+        <div class="field">
+          <div class="field-l">note spedizione / extra</div>
+          <textarea id="l-notes" placeholder="Spedizione tracciata dall'Italia. Possibile ritiro…" style="min-height:52px"></textarea>
+        </div>
+
+        <div class="note-box">
+          La nota colore viene aggiunta automaticamente in fondo ad ogni annuncio: avvisa che le fotografie professionali potrebbero non riprodurre fedelmente i colori originali e invita a leggere le info del profilo.
+        </div>
+
+        <button class="btn btn-solid btn-full" onclick="genListing()">genera annuncio</button>
+        <div id="listings-out" style="margin-top:24px"></div>
+      </div>
+
+      <!-- LABELS -->
+      <div id="v-labels" class="view">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+          <div class="sec-label" style="margin:0">etichette</div>
+          <button class="btn btn-sm" onclick="window.print()">stampa</button>
+        </div>
+        <div id="labels-wrap"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nb on" id="n-map" onclick="nav('map')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Magazzino
+    </button>
+    <button class="nb" id="n-stock" onclick="nav('stock')">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+      Stock
+    </button>
+    <button class="nb" id="n-listing" onclick="nav('listing')">
+      <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Listing
+    </button>
+    <button class="nb" id="n-labels" onclick="nav('labels')">
+      <svg viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      Etichette
+    </button>
+  </nav>
+</div>
+
+<!-- Detail sheet -->
+<div class="sheet-bg" id="det-bg" onclick="closeDet()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-pull"></div>
+    <div id="det-body"></div>
+  </div>
+</div>
+
+<!-- Add sheet -->
+<div class="sheet-bg" id="add-bg" onclick="closeAdd()">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <div class="sheet-pull"></div>
+    <div class="sheet-title">nuovo tessuto</div>
+    <div class="sheet-sub" id="add-loc-hint">seleziona la posizione in magazzino</div>
+
+    <div class="g2">
+      <div class="field"><div class="field-l">Collezione</div><input id="a-name" placeholder="Perennial…"></div>
+      <div class="field"><div class="field-l">Brand</div><select id="a-brand"><option>Vitale Barberis Canonico</option><option>Loro Piana</option><option>Scabal</option><option>Dormeuil</option><option>Drago</option><option>Altro</option></select></div>
+    </div>
+    <div class="g2">
+      <div class="field"><div class="field-l">Composizione</div><input id="a-comp" placeholder="100% Wool"></div>
+      <div class="field"><div class="field-l">g/m²</div><input id="a-weight" type="number" placeholder="280"></div>
+    </div>
+    <div class="g2">
+      <div class="field"><div class="field-l">Stagione</div><select id="a-season"><option value="">—</option><option>Spring/Summer</option><option>Autumn/Winter</option><option>Four Seasons</option></select></div>
+      <div class="field"><div class="field-l">Colore</div><input id="a-color" placeholder="Navy…"></div>
+    </div>
+    <div class="g3">
+      <div class="field"><div class="field-l">Metraggio</div><input id="a-meters" type="number" step="0.1" placeholder="3.5"></div>
+      <div class="field"><div class="field-l">Largh. cm</div><input id="a-width" type="number" placeholder="150"></div>
+      <div class="field"><div class="field-l">£/m</div><input id="a-price" type="number" placeholder="45"></div>
+    </div>
+    <div class="g3">
+      <div class="field"><div class="field-l">Scaffale</div><select id="a-shelf" onchange="updLocHint()"><option value="">—</option><option>A</option><option>B</option><option>C</option></select></div>
+      <div class="field"><div class="field-l">Ripiano</div><select id="a-tier" onchange="updLocHint()"><option value="">—</option><option value="1">1 alto</option><option value="2">2 medio</option><option value="3">3 basso</option></select></div>
+      <div class="field"><div class="field-l">Lato</div><select id="a-side" onchange="updLocHint()"><option value="">—</option><option value="sx">Sx</option><option value="dx">Dx</option></select></div>
+    </div>
+    <div class="field"><div class="field-l">Codice articolo</div><input id="a-code" placeholder="4K2397"></div>
+    <button class="btn btn-solid btn-full" onclick="addFabric()">aggiungi allo stock</button>
+    <button class="btn btn-full" style="margin-top:8px" onclick="closeAdd()">annulla</button>
+  </div>
+</div>
+
+<script>
+const SK='ffc-stock-v2';
+let stock=JSON.parse(localStorage.getItem(SK)||'[]');
+if(!stock.length){
+  stock=[
+    {id:'FFC-001',name:'Perennial',brand:'Vitale Barberis Canonico',comp:'100% Wool',weight:'260',season:'Four Seasons',color:'Charcoal',meters:4.2,width:'150',price:52,code:'4K1120',shelf:'A',tier:'1',side:'sx'},
+    {id:'FFC-002',name:'Revenge',brand:'Vitale Barberis Canonico',comp:'100% Wool',weight:'310',season:'Autumn/Winter',color:'Navy',meters:1.8,width:'150',price:48,code:'4K2397',shelf:'A',tier:'1',side:'dx'},
+    {id:'FFC-003',name:'Superbio',brand:'Vitale Barberis Canonico',comp:'100% Organic Wool',weight:'280',season:'Spring/Summer',color:'Ivory',meters:3.0,width:'150',price:65,code:'SB-0441',shelf:'B',tier:'2',side:'sx'},
+  ];save();
+}
+let idc=4,sel=null,lang='en',listings=[];
+
+function save(){localStorage.setItem(SK,JSON.stringify(stock))}
+function $(i){return document.getElementById(i)}
+function gv(i){return $(i).value.trim()}
+function newId(){return 'FFC-'+String(idc++).padStart(3,'0')}
+function locCode(f){return f.shelf+f.tier+(f.side==='sx'?'L':'R')}
+function slotOf(s,t,sd){return stock.find(f=>f.shelf===s&&f.tier===t&&f.side===sd)||null}
+function stOf(m){
+  if(m<=0)return{cls:'tag-out',lbl:'esaurito',bc:'out'};
+  if(m<2)return{cls:'tag-low',lbl:'scorta bassa',bc:'low'};
+  return{cls:'tag-ok',lbl:'disponibile',bc:''};
+}
+
+
+
+function updStats(){
+  $('s-tot').textContent=stock.length;
+  $('s-free').textContent=18-stock.length;
+  const m=stock.reduce((s,f)=>s+f.meters,0);
+  $('s-m').textContent=m.toFixed(1)+' m';
+  const v=Math.round(stock.reduce((s,f)=>s+f.meters*f.price,0));
+  $('s-val').textContent='£'+v;
+  $('hdr-kpi').innerHTML=stock.length+' tessuti<br>£'+v+' stock';
+}
+
+function renderWarehouse(){
+  const SH=['A','B','C'],TI=['1','2','3'],TL={'1':'rip. 1','2':'rip. 2','3':'rip. 3'};
+  $('warehouse').innerHTML=SH.map(sh=>`
+    <div class="shelf">
+      <div class="shelf-hd">
+        <span class="shelf-name">scaffale ${sh}</span>
+        <span class="shelf-ct">${stock.filter(f=>f.shelf===sh).length} / 6</span>
+      </div>
+      <div class="shelf-body">
+        ${TI.map(t=>`
+          <div class="rip">
+            <div class="rip-l">${TL[t]}</div>
+            <div class="slots">${rSlot(sh,t,'sx')}${rSlot(sh,t,'dx')}</div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function rSlot(sh,t,sd){
+  const f=slotOf(sh,t,sd),key=sh+t+sd,isSel=sel===key;
+  if(f){
+    const st=stOf(f.meters),pct=Math.min(100,Math.round((f.meters/6)*100));
+    return `<div class="slot occ${isSel?' sel':''}" onclick="clickSlot('${sh}','${t}','${sd}')">
+      <div class="slot-sd">${sd}</div>
+      <div class="slot-nm">${f.name}</div>
+      <div class="slot-sb">${f.meters.toFixed(1)}m · £${f.price}</div>
+      <div class="slot-bar"><div class="slot-fill ${st.bc}" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+  return `<div class="slot" onclick="clickSlot('${sh}','${t}','${sd}')">
+    <div class="slot-sd">${sd}</div><div class="slot-mt">+</div>
+  </div>`;
+}
+
+function clickSlot(sh,t,sd){
+  sel=sh+t+sd;renderWarehouse();
+  const f=slotOf(sh,t,sd);
+  if(f) showDet(f);
+  else{$('a-shelf').value=sh;$('a-tier').value=t;$('a-side').value=sd;updLocHint();openAdd();}
+}
+
+function showDet(f){
+  const bcId='dbc';
+  const bcVal=(f.code||f.id).replace(/[^A-Z0-9\-\. \/\+]/gi,'').substring(0,20)||f.id;
+  const st=stOf(f.meters);
+  $('det-body').innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
+      <div>
+        <div class="sheet-title" style="margin:0">${f.name}</div>
+        <div style="font-size:12px;color:var(--ink3);margin-top:2px">${f.brand}</div>
+      </div>
+      <span class="tag ${st.cls}">${st.lbl}</span>
+    </div>
+    <div style="margin-bottom:16px"><span class="tag">${locCode(f)}</span></div>
+
+    <div class="det-row"><span class="det-k">Composizione</span><span class="det-v">${f.comp||'—'}</span></div>
+    <div class="det-row"><span class="det-k">Peso</span><span class="det-v">${f.weight?f.weight+' g/m²':'—'}</span></div>
+    <div class="det-row"><span class="det-k">Stagione</span><span class="det-v">${f.season||'—'}</span></div>
+    <div class="det-row"><span class="det-k">Colore</span><span class="det-v">${f.color||'—'}</span></div>
+    <div class="det-row"><span class="det-k">Larghezza</span><span class="det-v">${f.width?f.width+' cm':'—'}</span></div>
+    <div class="det-row"><span class="det-k">Prezzo / m</span><span class="det-v">£${f.price}</span></div>
+    <div class="det-row">
+      <span class="det-k">Metraggio</span>
+      <span class="det-v" style="display:flex;align-items:center;gap:4px">
+        <input type="number" value="${f.meters}" step="0.1" min="0"
+          style="width:58px;text-align:right;font-family:var(--mono);font-size:12px;border-bottom:1px solid var(--rule);padding:2px 0"
+          onchange="updM('${f.id}',this.value)"> m
+      </span>
+    </div>
+    <div class="det-row" style="margin-bottom:16px"><span class="det-k">Valore</span><span class="det-v" id="dval-${f.id}">£${(f.meters*f.price).toFixed(2)}</span></div>
+
+    <div class="lcard" style="margin-bottom:16px">
+      <div class="lbl-s">fabricsforcouture · ${f.id}</div>
+      <div class="lbl-n">${f.name}</div>
+      <div class="lbl-b">${f.brand}</div>
+      <hr class="lbl-hr">
+      <div class="lbl-g">
+        <div><div class="lbl-k">Comp.</div><div class="lbl-v">${f.comp||'—'}</div></div>
+        <div><div class="lbl-k">Peso</div><div class="lbl-v">${f.weight?f.weight+'g/m²':'—'}</div></div>
+        <div><div class="lbl-k">Stagione</div><div class="lbl-v">${f.season||'—'}</div></div>
+        <div><div class="lbl-k">Colore</div><div class="lbl-v">${f.color||'—'}</div></div>
+        <div><div class="lbl-k">Largh.</div><div class="lbl-v">${f.width?f.width+'cm':'—'}</div></div>
+        <div><div class="lbl-k">£/m</div><div class="lbl-v">£${f.price}</div></div>
+      </div>
+      <hr class="lbl-hr">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><div class="lbl-k">disponibilità</div><div class="lbl-v">${f.meters.toFixed(1)} m — £${(f.meters*f.price).toFixed(2)}</div></div>
+        <div class="lbl-pos">${locCode(f)}</div>
+      </div>
+      <div class="lbl-bc"><svg id="${bcId}"></svg></div>
+      <div style="font-size:7px;text-align:center;color:#999;letter-spacing:.1em;margin-top:1px">${bcVal}</div>
+    </div>
+
+    <div class="g2" style="gap:8px">
+      <button class="btn" onclick="quickL('${f.id}')">genera listing</button>
+      <button class="btn" style="color:#a03428;border-color:rgba(200,74,58,.3)" onclick="removeF('${f.id}')">rimuovi</button>
+    </div>`;
+  $('det-bg').style.display='block';
+  setTimeout(()=>{
+    try{JsBarcode('#'+bcId,bcVal,{format:'CODE128',width:1.3,height:28,displayValue:false,margin:0,background:'#ffffff',lineColor:'#111'});}catch(e){}
+  },60);
+}
+
+function closeDet(){$('det-bg').style.display='none';sel=null;renderWarehouse();}
+
+function updM(id,val){
+  const f=stock.find(x=>x.id===id);if(!f)return;
+  f.meters=parseFloat(val)||0;
+  const dv=$('dval-'+id);if(dv)dv.textContent='£'+(f.meters*f.price).toFixed(2);
+  save();updStats();renderWarehouse();renderStockList();renderLabels();
+}
+
+function removeF(id){
+  if(!confirm('Rimuovere questo tessuto?'))return;
+  stock=stock.filter(x=>x.id!==id);
+  save();closeDet();updStats();renderWarehouse();renderStockList();renderLabels();updPicker();
+}
+
+function openAdd(){$('add-bg').style.display='block';}
+function closeAdd(){$('add-bg').style.display='none';}
+
+function updLocHint(){
+  const sh=gv('a-shelf'),t=gv('a-tier'),sd=gv('a-side'),el=$('add-loc-hint');
+  if(sh&&t&&sd){
+    const ex=slotOf(sh,t,sd);
+    if(ex){el.className='loc-warn';el.textContent='⚠ occupata: '+ex.name;}
+    else{el.className='loc-ok';el.textContent='✓ scaffale '+sh+' · ripiano '+t+' · '+(sd==='sx'?'sinistra':'destra');}
+  }else{el.className='loc-empty';el.textContent='seleziona la posizione in magazzino';}
+}
+
+function addFabric(){
+  const name=gv('a-name'),meters=parseFloat(gv('a-meters'))||0,price=parseFloat(gv('a-price'))||0;
+  const sh=gv('a-shelf'),t=gv('a-tier'),sd=gv('a-side');
+  if(!name||!meters||!price||!sh||!t||!sd){alert('Compila nome, metraggio, prezzo e posizione.');return;}
+  if(slotOf(sh,t,sd)){alert('Posizione già occupata.');return;}
+  const item={id:newId(),name,brand:$('a-brand').value,comp:gv('a-comp'),weight:gv('a-weight'),season:$('a-season').value,color:gv('a-color'),meters,width:gv('a-width'),price,code:gv('a-code'),shelf:sh,tier:t,side:sd};
+  stock.push(item);save();
+  ['a-name','a-comp','a-weight','a-color','a-meters','a-width','a-price','a-code'].forEach(x=>$(x).value='');
+  $('a-season').value='';$('a-shelf').value='';$('a-tier').value='';$('a-side').value='';
+  closeAdd();updStats();renderWarehouse();renderStockList();renderLabels();updPicker();
+  sel=sh+t+sd;renderWarehouse();showDet(item);
+}
+
+function renderStockList(){
+  const el=$('stock-list');
+  if(!stock.length){el.innerHTML='<div class="empty">nessun tessuto in stock.</div>';return;}
+  const sorted=[...stock].sort((a,b)=>(a.shelf+a.tier+a.side).localeCompare(b.shelf+b.tier+b.side));
+  el.innerHTML='<div style="border-top:1px solid var(--rule2)">'+sorted.map(f=>{
+    const st=stOf(f.meters);
+    return `<div class="list-row">
+      <div class="list-main">
+        <div class="list-nm">${f.name}</div>
+        <div class="list-sb">${f.brand} · ${f.comp} · ${f.meters.toFixed(1)}m · £${f.price}/m</div>
+      </div>
+      <span class="tag" style="font-size:10px">${locCode(f)}</span>
+      <span class="tag ${st.cls}">${st.lbl}</span>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function renderLabels(){
+  const w=$('labels-wrap');
+  if(!stock.length){w.innerHTML='<div class="empty">nessun tessuto in stock.</div>';return;}
+  w.innerHTML=stock.map(f=>{
+    const bcId='lbc-'+f.id.replace('-','_');
+    const bcVal=(f.code||f.id).replace(/[^A-Z0-9\-\. \/\+]/gi,'').substring(0,20)||f.id;
+    return `<div class="lcard" style="margin-bottom:12px">
+      <div class="lbl-s">fabricsforcouture · ${f.id}</div>
+      <div class="lbl-n">${f.name}</div>
+      <div class="lbl-b">${f.brand}</div>
+      <hr class="lbl-hr">
+      <div class="lbl-g">
+        <div><div class="lbl-k">Composizione</div><div class="lbl-v">${f.comp||'—'}</div></div>
+        <div><div class="lbl-k">Peso</div><div class="lbl-v">${f.weight?f.weight+' g/m²':'—'}</div></div>
+        <div><div class="lbl-k">Stagione</div><div class="lbl-v">${f.season||'—'}</div></div>
+        <div><div class="lbl-k">Colore</div><div class="lbl-v">${f.color||'—'}</div></div>
+        <div><div class="lbl-k">Larghezza</div><div class="lbl-v">${f.width?f.width+' cm':'—'}</div></div>
+        <div><div class="lbl-k">£/m</div><div class="lbl-v">£${f.price}</div></div>
+      </div>
+      <hr class="lbl-hr">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><div class="lbl-k">disponibilità</div><div class="lbl-v">${f.meters.toFixed(1)} m — £${(f.meters*f.price).toFixed(2)}</div></div>
+        <div class="lbl-pos">${locCode(f)}</div>
+      </div>
+      <div class="lbl-bc"><svg id="${bcId}"></svg></div>
+      <div style="font-size:7px;text-align:center;color:#999;letter-spacing:.1em;margin-top:1px">${bcVal}</div>
+    </div>`;
+  }).join('');
+  setTimeout(()=>{
+    stock.forEach(f=>{
+      const bcId='lbc-'+f.id.replace('-','_');
+      const bcVal=(f.code||f.id).replace(/[^A-Z0-9\-\. \/\+]/gi,'').substring(0,20)||f.id;
+      try{JsBarcode('#'+bcId,bcVal,{format:'CODE128',width:1.3,height:28,displayValue:false,margin:0,background:'#ffffff',lineColor:'#111'});}catch(e){}
+    });
+  },100);
+}
+
+function updPicker(){
+  const s=$('l-pick');
+  s.innerHTML='<option value="">— seleziona —</option>'+stock.map(f=>`<option value="${f.id}">${f.name} [${locCode(f)}] · ${f.meters.toFixed(1)}m · £${f.price}/m</option>`).join('');
+}
+
+function prefillDesc(){
+  const fid=gv('l-pick');
+  if(!fid) return;
+  const f=stock.find(x=>x.id===fid);
+  if(!f) return;
+  const d=$('l-desc');
+  if(!d.value.trim()){
+    // pre-fill with a neutral starting point the user can edit
+    const parts=[];
+    if(f.color) parts.push(f.color.charAt(0).toUpperCase()+f.color.slice(1));
+    parts.push(f.name);
+    if(f.season) parts.push('('+f.season+')');
+    d.value=parts.join(' ')+'. ';
+    d.focus();
+    d.setSelectionRange(d.value.length,d.value.length);
+  }
+}
+
+function setLang(l){lang=l;['en','it','bi'].forEach(x=>$('lng-'+x).classList.toggle('on',x===l));}
+
+function buildText(f,desc,notes,l){
+  const isIT=l==='it'||l==='bi';
+  const isEN=l==='en'||l==='bi';
+
+  const EN_COLOUR='⚠ Colour note: Professional photographs may not accurately reproduce the original colour of this fabric. For a more precise description of the shade, please read our profile info before purchasing.';
+  const IT_COLOUR='⚠ Nota colore: Le fotografie professionali potrebbero non riprodurre fedelmente il colore originale di questo tessuto. Per una descrizione più precisa della tonalità, si prega di leggere le info del profilo prima dell\'acquisto.';
+
+  function blockEN(){
+    const lines=[];
+    lines.push(f.name.toUpperCase()+' — '+f.brand);
+    lines.push('');
+    if(desc) lines.push(desc.trim());
+    lines.push('');
+    lines.push('— SPECIFICATIONS —');
+    if(f.comp)    lines.push('· Composition: '+f.comp);
+    if(f.weight)  lines.push('· Weight: '+f.weight+' g/m²');
+    if(f.season)  lines.push('· Season: '+f.season);
+    if(f.color)   lines.push('· Colour: '+f.color);
+    if(f.width)   lines.push('· Width: '+f.width+' cm');
+    if(f.code)    lines.push('· Article code: '+f.code);
+    lines.push('');
+    lines.push('— AVAILABILITY —');
+    lines.push('· Price: £'+f.price+' / metre');
+    lines.push('· Available: '+f.meters.toFixed(1)+' m');
+    lines.push('· Total value: £'+(f.meters*f.price).toFixed(2));
+    lines.push('');
+    lines.push('— SHIPPING —');
+    if(notes&&notes.trim()) lines.push(notes.trim());
+    else lines.push('Shipped from Italy. Tracking included.');
+    lines.push('');
+    lines.push(EN_COLOUR);
+    return lines.join('\n');
+  }
+
+  function blockIT(){
+    const lines=[];
+    lines.push(f.name.toUpperCase()+' — '+f.brand);
+    lines.push('');
+    if(desc) lines.push(desc.trim());
+    lines.push('');
+    lines.push('— SPECIFICHE TECNICHE —');
+    if(f.comp)    lines.push('· Composizione: '+f.comp);
+    if(f.weight)  lines.push('· Peso: '+f.weight+' g/m²');
+    if(f.season)  lines.push('· Stagione: '+f.season);
+    if(f.color)   lines.push('· Colore: '+f.color);
+    if(f.width)   lines.push('· Altezza: '+f.width+' cm');
+    if(f.code)    lines.push('· Codice articolo: '+f.code);
+    lines.push('');
+    lines.push('— DISPONIBILITÀ —');
+    lines.push('· Prezzo: £'+f.price+' / metro');
+    lines.push('· Disponibile: '+f.meters.toFixed(1)+' m');
+    lines.push('· Valore totale: £'+(f.meters*f.price).toFixed(2));
+    lines.push('');
+    lines.push('— SPEDIZIONE —');
+    if(notes&&notes.trim()) lines.push(notes.trim());
+    else lines.push('Spedizione dall\'Italia con tracciabilità inclusa.');
+    lines.push('');
+    lines.push(IT_COLOUR);
+    return lines.join('\n');
+  }
+
+  if(l==='en') return blockEN();
+  if(l==='it') return blockIT();
+  return blockEN()+'\n\n——————————\n\n'+blockIT();
+}
+
+function genListing(){
+  const fid=gv('l-pick');if(!fid){alert('Seleziona un tessuto.');return;}
+  const f=stock.find(x=>x.id===fid);if(!f)return;
+  const platforms=['vinted','ebay'].filter(p=>$('p-'+p).checked);
+  if(!platforms.length){alert('Seleziona almeno una piattaforma.');return;}
+  const desc=gv('l-desc');
+  const notes=gv('l-notes');
+
+  // one card per platform
+  platforms.forEach(plat=>{
+    const text=buildText(f,desc,notes,lang);
+    listings.unshift({id:Date.now()+Math.random(),fabric:f,platform:plat,lang,text});
+  });
+  renderListings();
+}
+
+function renderListings(){
+  const el=$('listings-out');
+  if(!listings.length){el.innerHTML='';return;}
+  el.innerHTML=listings.map(c=>`
+    <div class="lcard-out">
+      <div class="lcard-hd">
+        <div>
+          <div class="lcard-nm">${c.fabric.name}</div>
+          <div class="lcard-sub">${c.platform.charAt(0).toUpperCase()+c.platform.slice(1)} · ${c.lang==='bi'?'bilingue':c.lang==='it'?'italiano':'english'}</div>
+        </div>
+        <button class="btn btn-sm" onclick="listings=listings.filter(x=>x.id!==${c.id});renderListings()" style="padding:4px 8px;font-size:11px">✕</button>
+      </div>
+      <div class="lcard-text">${escHtml(c.text)}</div>
+      <button class="btn btn-sm btn-full" style="margin-top:12px" onclick="cpyL(${c.id},this)">copia testo</button>
+    </div>`).join('');
+}
+
+function escHtml(t){
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function cpyL(id,btn){
+  const c=listings.find(x=>x.id===id);if(!c)return;
+  navigator.clipboard.writeText(c.text).then(()=>{btn.textContent='✓ copiato';setTimeout(()=>btn.textContent='copia testo',2000);});
+}
+
+function quickL(fid){$('l-pick').value=fid;prefillDesc();closeDet();nav('listing');}
+
+function exportCSV(){
+  const h='ID,Nome,Brand,Comp,g/m2,Stagione,Colore,Metraggio,Larghezza,£/m,Posizione,Codice';
+  const rows=stock.map(f=>[f.id,f.name,f.brand,f.comp,f.weight,f.season,f.color,f.meters,f.width,f.price,locCode(f),f.code].join(','));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([[h,...rows].join('\n')],{type:'text/csv'}));
+  a.download='ffc-stock.csv';a.click();
+}
+
+function nav(v){
+  ['map','stock','listing','labels'].forEach(x=>{
+    $('v-'+x).classList.toggle('on',x===v);
+    $('n-'+x).classList.toggle('on',x===v);
+  });
+  if(v==='labels')renderLabels();
+  if(v==='listing')updPicker();
+  if(v==='stock')renderStockList();
+}
+
+updStats();renderWarehouse();renderStockList();updPicker();
+setTimeout(renderLabels,400);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
