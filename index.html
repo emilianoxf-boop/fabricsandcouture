@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#085041">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FFC Stock">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<title>fabricsforcouture — stock manager</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<style>
+:root{
+  --bg:#ffffff;--bg2:#f7f6f3;--bg3:#f0ede8;
+  --text:#111111;--text2:#666666;--text3:#999999;
+  --border:#e0ddd8;--border2:#c8c5c0;
+  --green:#085041;--green-light:#E1F5EE;--green-text:#085041;
+  --amber-light:#FAEEDA;--amber-text:#633806;
+  --red-light:#FCEBEB;--red-text:#501313;
+  --blue-light:#E6F1FB;--blue-text:#0C447C;
+  --radius:10px;--radius-sm:6px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1a1a1a;--bg2:#242424;--bg3:#2e2e2e;
+    --text:#f0f0f0;--text2:#aaaaaa;--text3:#666666;
+    --border:#333333;--border2:#444444;
+    --green:#1D9E75;--green-light:#04342C;--green-text:#9FE1CB;
+    --amber-light:#412402;--amber-text:#FAC775;
+    --red-light:#501313;--red-text:#F09595;
+    --blue-light:#042C53;--blue-text:#85B7EB;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;font-size:14px;color:var(--text);background:var(--bg3);min-height:100vh}
+input,select,textarea,button{font-family:inherit;font-size:14px;color:var(--text)}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 11px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--green)}
+textarea{resize:vertical;min-height:64px}
+
+.app{display:flex;flex-direction:column;min-height:100vh}
+.header{background:var(--green);color:#E1F5EE;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-logo{font-size:15px;font-weight:600;letter-spacing:.01em}
+.header-sub{font-size:11px;opacity:.7;margin-top:1px}
+.content{flex:1;padding:12px 16px 100px}
+.nav{position:fixed;bottom:0;left:0;right:0;background:var(--bg);border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 4px 8px;cursor:pointer;color:var(--text2);font-size:10px;font-weight:500;border:none;background:none;transition:color .15s}
+.nav-item.active{color:var(--green)}
+.nav-icon{font-size:22px;line-height:1}
+.view{display:none}
+.view.active{display:block}
+
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--bg);border-radius:var(--radius);padding:12px 14px;border:1px solid var(--border)}
+.stat .v{font-size:20px;font-weight:600}
+.stat .l{font-size:11px;color:var(--text2);margin-top:2px}
+
+.card{background:var(--bg);border-radius:var(--radius);padding:14px 15px;margin-bottom:12px;border:1px solid var(--border)}
+.card-title{font-size:12px;font-weight:600;color:var(--text2);letter-spacing:.04em;text-transform:uppercase;margin-bottom:12px}
+
+.warehouse{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.shelf-unit{background:var(--bg);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border)}
+.shelf-hd{padding:10px 14px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.shelf-lbl{font-size:13px;font-weight:600}
+.shelf-body{padding:10px}
+.rip{margin-bottom:8px}
+.rip:last-child{margin-bottom:0}
+.rip-lbl{font-size:10px;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-bottom:5px}
+.rip-slots{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.slot{border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:8px 9px;cursor:pointer;min-height:56px;transition:border-color .15s;background:var(--bg)}
+.slot:active{background:var(--bg2)}
+.slot.occ{background:var(--bg2)}
+.slot.sel{border-color:var(--green);background:var(--green-light)}
+.slot-sd{font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.slot-nm{font-size:11px;font-weight:600;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot-sb{font-size:10px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.slot-bar{height:3px;border-radius:2px;margin-top:5px;background:var(--border)}
+.slot-fill{height:100%;border-radius:2px;background:var(--green)}
+.slot-fill.low{background:#EF9F27}
+.slot-fill.out{background:#E24B4A}
+.slot-empty{display:flex;align-items:center;justify-content:center;height:36px;font-size:22px;color:var(--border2)}
+
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:20px}
+.b-ok{background:var(--green-light);color:var(--green-text)}
+.b-low{background:var(--amber-light);color:var(--amber-text)}
+.b-out{background:var(--red-light);color:var(--red-text)}
+.b-info{background:var(--blue-light);color:var(--blue-text)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 18px;border-radius:var(--radius-sm);font-weight:600;font-size:14px;cursor:pointer;border:1.5px solid var(--border);background:var(--bg);color:var(--text);transition:all .15s}
+.btn:active{opacity:.8}
+.btn-primary{background:var(--green);color:#fff;border-color:var(--green)}
+.btn-full{width:100%;margin-top:6px}
+.btn-sm{font-size:12px;padding:7px 12px}
+.btn-danger{border-color:var(--border);color:var(--red-text)}
+.btn-danger:active{background:var(--red-light)}
+
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:10px}
+.field label{font-size:11px;font-weight:600;color:var(--text2);letter-spacing:.04em;text-transform:uppercase}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+
+.detail-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45)}
+.detail-sheet{position:absolute;bottom:0;left:0;right:0;background:var(--bg);border-radius:18px 18px 0 0;padding:16px;max-height:90vh;overflow-y:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.sheet-handle{width:36px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px}
+.sheet-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.sheet-sub{font-size:13px;color:var(--text2);margin-bottom:14px}
+.detail-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.detail-row:last-child{border-bottom:none}
+.detail-k{color:var(--text2)}
+.detail-v{font-weight:600;text-align:right}
+
+.label-card{background:#fff;color:#111;border:1.5px solid #222;border-radius:6px;padding:10px 12px 8px;font-family:'Courier New',monospace;margin-bottom:10px}
+.lbl-shop{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:#666}
+.lbl-name{font-size:14px;font-weight:700;line-height:1.1;margin:2px 0 1px}
+.lbl-brand{font-size:9px;color:#555;margin-bottom:4px}
+.lbl-hr{border:none;border-top:1px solid #ccc;margin:4px 0}
+.lbl-specs{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.lbl-sk{font-size:8px;text-transform:uppercase;letter-spacing:.05em;color:#777}
+.lbl-sv{font-weight:700;font-size:10px;color:#111;margin-bottom:3px}
+.lbl-loc{font-size:11px;font-weight:700;padding:2px 6px;border:1px solid #888;border-radius:3px;display:inline-block;margin-top:3px}
+.lbl-bc{text-align:center;margin-top:4px}
+
+.listing-card{background:var(--bg2);border-radius:var(--radius);padding:13px;margin-bottom:10px;border:1px solid var(--border)}
+.listing-text{font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.spinner-row{display:flex;align-items:center;gap:8px;color:var(--text2);font-size:13px;padding:8px 0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0}
+
+.lang-row{display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;width:fit-content}
+.lang-btn{padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;background:var(--bg);color:var(--text2);border:none}
+.lang-btn.active{background:var(--green);color:#fff}
+.lang-btn:not(:last-child){border-right:1px solid var(--border)}
+
+.list-item{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)}
+.list-item:last-child{border-bottom:none}
+.list-item-main{flex:1;min-width:0}
+.list-item-name{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-item-sub{font-size:11px;color:var(--text2);margin-top:1px}
+
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--text3);font-size:13px}
+.section-hd{font-size:13px;font-weight:600;color:var(--text2);margin:16px 0 8px}
+
+@media print{
+  .header,.nav,.detail-overlay{display:none!important}
+  .content{padding:0}
+  .view:not(.active){display:none}
+  body{background:white}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="header-logo">✂️ fabricsforcouture</div>
+      <div class="header-sub">stock manager</div>
+    </div>
+    <div id="hdr-stats" style="text-align:right;font-size:12px;opacity:.85"></div>
+  </div>
+
+  <div class="content">
+    <div id="v-map" class="view active">
+      <div class="stats">
+        <div class="stat"><div class="v" id="s-tot">0</div><div class="l">Tessuti in stock</div></div>
+        <div class="stat"><div class="v" id="s-free">18</div><div class="l">Posizioni libere</div></div>
+        <div class="stat"><div class="v" id="s-m">0 m</div><div class="l">Metraggio totale</div></div>
+        <div class="stat"><div class="v" id="s-val">£0</div><div class="l">Valore stock</div></div>
+      </div>
+      <div class="section-hd">Mappa magazzino</div>
+      <div class="warehouse" id="warehouse"></div>
+      <button class="btn btn-primary btn-full" onclick="openAddSheet()">+ Aggiungi tessuto</button>
+    </div>
+
+    <div id="v-stock" class="view">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="section-hd" style="margin:0">Tutti i tessuti</div>
+        <button class="btn btn-sm" onclick="exportCSV()">Esporta CSV</button>
+      </div>
+      <div id="stock-list"></div>
+    </div>
+
+    <div id="v-listing" class="view">
+      <div class="card">
+        <div class="card-title">Genera annuncio AI</div>
+        <div class="field"><label>Tessuto</label>
+          <select id="l-pick"><option value="">— seleziona —</option></select>
+        </div>
+        <div class="field"><label>Piattaforme</label>
+          <div style="display:flex;gap:14px;margin-top:2px">
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="p-vinted" checked> Vinted</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="p-ebay"> eBay</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="p-etsy" checked> Etsy</label>
+          </div>
+        </div>
+        <div class="field"><label>Lingua</label>
+          <div class="lang-row">
+            <button class="lang-btn active" id="lng-en" onclick="setLang('en')">EN</button>
+            <button class="lang-btn" id="lng-it" onclick="setLang('it')">IT</button>
+            <button class="lang-btn" id="lng-bi" onclick="setLang('bi')">Bilingue</button>
+          </div>
+        </div>
+        <div class="field"><label>Note aggiuntive</label>
+          <textarea id="l-notes" placeholder="Pezzo unico, spedizione express…"></textarea>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="genListing()">✦ Genera con AI</button>
+      </div>
+      <div id="listings-out"></div>
+    </div>
+
+    <div id="v-labels" class="view">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="section-hd" style="margin:0">Etichette stock</div>
+        <button class="btn btn-sm" onclick="window.print()">Stampa</button>
+      </div>
+      <div id="labels-wrap"></div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="nav-item active" id="n-map" onclick="nav('map')">
+      <span class="nav-icon">🏭</span>Magazzino
+    </button>
+    <button class="nav-item" id="n-stock" onclick="nav('stock')">
+      <span class="nav-icon">📋</span>Stock
+    </button>
+    <button class="nav-item" id="n-listing" onclick="nav('listing')">
+      <span class="nav-icon">📣</span>Listing
+    </button>
+    <button class="nav-item" id="n-labels" onclick="nav('labels')">
+      <span class="nav-icon">🏷️</span>Etichette
+    </button>
+  </nav>
+</div>
+
+<!-- Detail Sheet -->
+<div class="detail-overlay" id="det-overlay" onclick="closeDet()">
+  <div class="detail-sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div id="det-body"></div>
+  </div>
+</div>
+
+<!-- Add Sheet -->
+<div class="detail-overlay" id="add-overlay" onclick="closeAdd()">
+  <div class="detail-sheet" onclick="event.stopPropagation()">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Aggiungi tessuto</div>
+    <div class="sheet-sub" id="add-loc-hint">Seleziona la posizione in magazzino</div>
+    <div class="grid2">
+      <div class="field"><label>Collezione</label><input id="a-name" placeholder="Perennial…"></div>
+      <div class="field"><label>Brand</label><select id="a-brand"><option>Vitale Barberis Canonico</option><option>Loro Piana</option><option>Scabal</option><option>Dormeuil</option><option>Drago</option><option>Altro</option></select></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Composizione</label><input id="a-comp" placeholder="100% Wool"></div>
+      <div class="field"><label>g/m²</label><input id="a-weight" type="number" placeholder="280"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Stagione</label><select id="a-season"><option value="">—</option><option>Spring/Summer</option><option>Autumn/Winter</option><option>Four Seasons</option></select></div>
+      <div class="field"><label>Colore</label><input id="a-color" placeholder="Navy…"></div>
+    </div>
+    <div class="grid3">
+      <div class="field"><label>Metraggio</label><input id="a-meters" type="number" step="0.1" placeholder="3.5"></div>
+      <div class="field"><label>Largh. cm</label><input id="a-width" type="number" placeholder="150"></div>
+      <div class="field"><label>£/m</label><input id="a-price" type="number" placeholder="45"></div>
+    </div>
+    <div class="grid3">
+      <div class="field"><label>Scaffale</label><select id="a-shelf" onchange="updLocHint()"><option value="">—</option><option>A</option><option>B</option><option>C</option></select></div>
+      <div class="field"><label>Ripiano</label><select id="a-tier" onchange="updLocHint()"><option value="">—</option><option value="1">1 alto</option><option value="2">2 medio</option><option value="3">3 basso</option></select></div>
+      <div class="field"><label>Lato</label><select id="a-side" onchange="updLocHint()"><option value="">—</option><option value="sx">Sinistra</option><option value="dx">Destra</option></select></div>
+    </div>
+    <div class="field"><label>Codice articolo</label><input id="a-code" placeholder="4K2397"></div>
+    <button class="btn btn-primary btn-full" onclick="addFabric()">Aggiungi allo stock</button>
+    <button class="btn btn-full" style="margin-top:8px" onclick="closeAdd()">Annulla</button>
+  </div>
+</div>
+
+<script>
+const STOCK_KEY='ffc-stock-v1';
+let stock=JSON.parse(localStorage.getItem(STOCK_KEY)||'[]');
+if(!stock.length){
+  stock=[
+    {id:'FFC-001',name:'Perennial',brand:'Vitale Barberis Canonico',comp:'100% Wool',weight:'260',season:'Four Seasons',color:'Charcoal',meters:4.2,width:'150',price:52,code:'4K1120',shelf:'A',tier:'1',side:'sx'},
+    {id:'FFC-002',name:'Revenge',brand:'Vitale Barberis Canonico',comp:'100% Wool',weight:'310',season:'Autumn/Winter',color:'Navy',meters:1.8,width:'150',price:48,code:'4K2397',shelf:'A',tier:'1',side:'dx'},
+    {id:'FFC-003',name:'Superbio',brand:'Vitale Barberis Canonico',comp:'100% Organic Wool',weight:'280',season:'Spring/Summer',color:'Ivory',meters:3.0,width:'150',price:65,code:'SB-0441',shelf:'B',tier:'2',side:'sx'},
+  ];
+  save();
+}
+
+let idN=4,selSlot=null,curLang='en',listings=[];
+
+function save(){localStorage.setItem(STOCK_KEY,JSON.stringify(stock));}
+function gid(id){return document.getElementById(id)}
+function gv(id){return gid(id).value.trim()}
+function genId(){return 'FFC-'+String(idN++).padStart(3,'0')}
+function locCode(f){return f.shelf+f.tier+'-'+f.side.toUpperCase()}
+function slotOf(s,t,sd){return stock.find(f=>f.shelf===s&&f.tier===t&&f.side===sd)||null}
+function status(m){
+  if(m<=0)return{cls:'b-out',lbl:'Esaurito',bc:'out'};
+  if(m<2)return{cls:'b-low',lbl:'Scorta bassa',bc:'low'};
+  return{cls:'b-ok',lbl:'Disponibile',bc:''};
+}
+
+function updStats(){
+  gid('s-tot').textContent=stock.length;
+  gid('s-free').textContent=18-stock.length;
+  const m=stock.reduce((s,f)=>s+f.meters,0);
+  gid('s-m').textContent=m.toFixed(1)+' m';
+  gid('s-val').textContent='£'+Math.round(stock.reduce((s,f)=>s+f.meters*f.price,0));
+  gid('hdr-stats').textContent=stock.length+' tessuti · £'+Math.round(stock.reduce((s,f)=>s+f.meters*f.price,0));
+}
+
+function renderWarehouse(){
+  const shelves=['A','B','C'],tiers=['1','2','3'],tLbl={'1':'Rip. 1 — alto','2':'Rip. 2 — medio','3':'Rip. 3 — basso'};
+  gid('warehouse').innerHTML=shelves.map(sh=>`
+    <div class="shelf-unit">
+      <div class="shelf-hd"><span class="shelf-lbl">Scaffale ${sh}</span><span style="font-size:11px;color:var(--text2)">${stock.filter(f=>f.shelf===sh).length}/6 posizioni</span></div>
+      <div class="shelf-body">
+        ${tiers.map(t=>`
+          <div class="rip">
+            <div class="rip-lbl">${tLbl[t]}</div>
+            <div class="rip-slots">${renderSlot(sh,t,'sx')}${renderSlot(sh,t,'dx')}</div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+function renderSlot(sh,t,sd){
+  const f=slotOf(sh,t,sd),key=sh+'-'+t+'-'+sd,sel=selSlot===key;
+  if(f){
+    const st=status(f.meters),pct=Math.min(100,Math.round((f.meters/6)*100));
+    return `<div class="slot occ${sel?' sel':''}" onclick="clickSlot('${sh}','${t}','${sd}')">
+      <div class="slot-sd">${sd}</div>
+      <div class="slot-nm">${f.name}</div>
+      <div class="slot-sb">${f.meters.toFixed(1)}m · £${f.price}/m</div>
+      <div class="slot-bar"><div class="slot-fill ${st.bc}" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+  return `<div class="slot" onclick="clickSlot('${sh}','${t}','${sd}')">
+    <div class="slot-sd">${sd}</div>
+    <div class="slot-empty">+</div>
+  </div>`;
+}
+
+function clickSlot(sh,t,sd){
+  selSlot=sh+'-'+t+'-'+sd;
+  renderWarehouse();
+  const f=slotOf(sh,t,sd);
+  if(f) showDetail(f);
+  else {
+    gid('a-shelf').value=sh;gid('a-tier').value=t;gid('a-side').value=sd;
+    updLocHint();openAddSheet();
+  }
+}
+
+function showDetail(f){
+  const bcId='det-bc';
+  const bcVal=(f.code||f.id).replace(/[^A-Z0-9\-\.\ \/\+]/gi,'').substring(0,20)||f.id;
+  const st=status(f.meters);
+  const lc=locCode(f);
+  gid('det-body').innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+      <div>
+        <div class="sheet-title" style="margin-bottom:2px">${f.name}</div>
+        <div style="font-size:13px;color:var(--text2)">${f.brand}</div>
+      </div>
+      <span class="badge ${st.cls}">${st.lbl}</span>
+    </div>
+    <div style="margin-bottom:14px"><span class="badge b-info">${locCode(f)}</span></div>
+    <div class="detail-row"><span class="detail-k">Composizione</span><span class="detail-v">${f.comp||'—'}</span></div>
+    <div class="detail-row"><span class="detail-k">Peso</span><span class="detail-v">${f.weight?f.weight+' g/m²':'—'}</span></div>
+    <div class="detail-row"><span class="detail-k">Stagione</span><span class="detail-v">${f.season||'—'}</span></div>
+    <div class="detail-row"><span class="detail-k">Colore</span><span class="detail-v">${f.color||'—'}</span></div>
+    <div class="detail-row"><span class="detail-k">Larghezza</span><span class="detail-v">${f.width?f.width+' cm':'—'}</span></div>
+    <div class="detail-row"><span class="detail-k">Prezzo / m</span><span class="detail-v">£${f.price}</span></div>
+    <div class="detail-row"><span class="detail-k">Metraggio</span><span class="detail-v">
+      <input type="number" value="${f.meters}" step="0.1" min="0" style="width:65px;text-align:right;padding:4px 7px" onchange="updM('${f.id}',this.value)"> m
+    </span></div>
+    <div class="detail-row" style="margin-bottom:16px"><span class="detail-k">Valore totale</span><span class="detail-v" id="dv-${f.id}">£${(f.meters*f.price).toFixed(2)}</span></div>
+    <div class="label-card">
+      <div class="lbl-shop">fabricsforcouture · ${f.id}</div>
+      <div class="lbl-name">${f.name}</div>
+      <div class="lbl-brand">${f.brand}</div>
+      <hr class="lbl-hr">
+      <div class="lbl-specs">
+        <div><div class="lbl-sk">Comp.</div><div class="lbl-sv">${f.comp||'—'}</div></div>
+        <div><div class="lbl-sk">Peso</div><div class="lbl-sv">${f.weight?f.weight+'g/m²':'—'}</div></div>
+        <div><div class="lbl-sk">Stagione</div><div class="lbl-sv">${f.season||'—'}</div></div>
+        <div><div class="lbl-sk">Colore</div><div class="lbl-sv">${f.color||'—'}</div></div>
+        <div><div class="lbl-sk">Larghezza</div><div class="lbl-sv">${f.width?f.width+'cm':'—'}</div></div>
+        <div><div class="lbl-sk">£/m</div><div class="lbl-sv">£${f.price}</div></div>
+      </div>
+      <hr class="lbl-hr">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><div class="lbl-sk">disponibilità</div><div class="lbl-sv" style="font-size:11px">${f.meters.toFixed(1)} m · £${(f.meters*f.price).toFixed(2)}</div></div>
+        <div class="lbl-loc">${lc}</div>
+      </div>
+      <div class="lbl-bc"><svg id="${bcId}"></svg></div>
+      <div style="font-size:8px;text-align:center;color:#777;letter-spacing:.1em;margin-top:1px">${bcVal}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px">
+      <button class="btn btn-primary" onclick="quickListing('${f.id}')">Genera listing</button>
+      <button class="btn btn-danger" onclick="removeFabric('${f.id}')">Rimuovi</button>
+    </div>`;
+  gid('det-overlay').style.display='block';
+  setTimeout(()=>{
+    try{JsBarcode('#'+bcId,bcVal,{format:'CODE128',width:1.3,height:30,displayValue:false,margin:0,background:'#ffffff',lineColor:'#111'});}catch(e){}
+  },60);
+}
+
+function closeDet(){gid('det-overlay').style.display='none';selSlot=null;renderWarehouse();}
+
+function updM(id,val){
+  const f=stock.find(x=>x.id===id);if(!f)return;
+  f.meters=parseFloat(val)||0;
+  const dv=gid('dv-'+id);if(dv)dv.textContent='£'+(f.meters*f.price).toFixed(2);
+  save();updStats();renderWarehouse();renderStockList();renderLabels();
+}
+
+function removeFabric(id){
+  if(!confirm('Rimuovere questo tessuto dallo stock?'))return;
+  stock=stock.filter(x=>x.id!==id);
+  save();closeDet();updStats();renderWarehouse();renderStockList();renderLabels();updListingPicker();
+}
+
+function openAddSheet(){gid('add-overlay').style.display='block';}
+function closeAdd(){gid('add-overlay').style.display='none';}
+
+function updLocHint(){
+  const sh=gv('a-shelf'),t=gv('a-tier'),sd=gv('a-side');
+  const hint=gid('add-loc-hint');
+  if(sh&&t&&sd){
+    const ex=slotOf(sh,t,sd);
+    hint.style.color=ex?'var(--amber-text)':'var(--green-text)';
+    hint.textContent=ex?'⚠ Occupata da: '+ex.name:'✓ Scaffale '+sh+' · Ripiano '+t+' · '+(sd==='sx'?'Sinistra':'Destra');
+  }else{hint.style.color='var(--text2)';hint.textContent='Seleziona la posizione in magazzino';}
+}
+
+function addFabric(){
+  const name=gv('a-name'),meters=parseFloat(gv('a-meters'))||0,price=parseFloat(gv('a-price'))||0;
+  const sh=gv('a-shelf'),t=gv('a-tier'),sd=gv('a-side');
+  if(!name||!meters||!price||!sh||!t||!sd){alert('Compila: nome, metraggio, prezzo e posizione.');return;}
+  if(slotOf(sh,t,sd)){alert('Posizione già occupata. Scegli un altra posizione.');return;}
+  const item={id:genId(),name,brand:gid('a-brand').value,comp:gv('a-comp'),weight:gv('a-weight'),season:gid('a-season').value,color:gv('a-color'),meters,width:gv('a-width'),price,code:gv('a-code'),shelf:sh,tier:t,side:sd};
+  stock.push(item);save();
+  ['a-name','a-comp','a-weight','a-color','a-meters','a-width','a-price','a-code'].forEach(x=>gid(x).value='');
+  gid('a-season').value='';gid('a-shelf').value='';gid('a-tier').value='';gid('a-side').value='';
+  closeAdd();updStats();renderWarehouse();renderStockList();renderLabels();updListingPicker();
+  selSlot=sh+'-'+t+'-'+sd;renderWarehouse();showDetail(item);
+}
+
+function renderStockList(){
+  const el=gid('stock-list');
+  if(!stock.length){el.innerHTML='<div class="empty">Nessun tessuto ancora.<br>Vai a Magazzino per aggiungerne.</div>';return;}
+  const sorted=[...stock].sort((a,b)=>(a.shelf+a.tier+a.side).localeCompare(b.shelf+b.tier+b.side));
+  el.innerHTML='<div class="card">'+sorted.map(f=>{
+    const st=status(f.meters);
+    return `<div class="list-item">
+      <div class="list-item-main">
+        <div class="list-item-name">${f.name}</div>
+        <div class="list-item-sub">${f.brand} · ${f.comp} · ${f.meters.toFixed(1)}m · £${f.price}/m</div>
+      </div>
+      <span class="badge b-info" style="font-size:10px">${locCode(f)}</span>
+      <span class="badge ${st.cls}">${st.lbl}</span>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function renderLabels(){
+  const w=gid('labels-wrap');
+  if(!stock.length){w.innerHTML='<div class="empty">Nessun tessuto ancora.</div>';return;}
+  w.innerHTML=stock.map(f=>{
+    const bcId='lbc-'+f.id.replace('-','_');
+    const bcVal=(f.code||f.id).replace(/[^A-Z0-9\-\.\ \/\+]/gi,'').substring(0,20)||f.id;
+    return `<div class="label-card">
+      <div class="lbl-shop">fabricsforcouture · ${f.id}</div>
+      <div class="lbl-name">${f.name}</div>
+      <div class="lbl-brand">${f.brand}</div>
+      <hr class="lbl-hr">
+      <div class="lbl-specs">
+        <div><div class="lbl-sk">Composizione</div><div class="lbl-sv">${f.comp||'—'}</div></div>
+        <div><div class="lbl-sk">Peso</div><div class="lbl-sv">${f.weight?f.weight+' g/m²':'—'}</div></div>
+        <div><div class="lbl-sk">Stagione</div><div class="lbl-sv">${f.season||'—'}</div></div>
+        <div><div class="lbl-sk">Colore</div><div class="lbl-sv">${f.color||'—'}</div></div>
+        <div><div class="lbl-sk">Larghezza</div><div class="lbl-sv">${f.width?f.width+' cm':'—'}</div></div>
+        <div><div class="lbl-sk">£/m</div><div class="lbl-sv">£${f.price}</div></div>
+      </div>
+      <hr class="lbl-hr">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><div class="lbl-sk">disponibilità</div><div class="lbl-sv" style="font-size:11px">${f.meters.toFixed(1)} m — £${(f.meters*f.price).toFixed(2)}</div></div>
+        <div class="lbl-loc">${locCode(f)}</div>
+      </div>
+      <div class="lbl-bc"><svg id="${bcId}"></svg></div>
+      <div style="font-size:8px;text-align:center;color:#777;letter-spacing:.1em;margin-top:1px">${bcVal}</div>
+    </div>`;
+  }).join('');
+  setTimeout(()=>{
+    stock.forEach(f=>{
+      const bcId='lbc-'+f.id.replace('-','_');
+      const bcVal=(f.code||f.id).replace(/[^A-Z0-9\-\.\ \/\+]/gi,'').substring(0,20)||f.id;
+      try{JsBarcode('#'+bcId,bcVal,{format:'CODE128',width:1.4,height:30,displayValue:false,margin:0,background:'#ffffff',lineColor:'#111'});}catch(e){}
+    });
+  },100);
+}
+
+function updListingPicker(){
+  const sel=gid('l-pick');
+  sel.innerHTML='<option value="">— seleziona —</option>'+stock.map(f=>`<option value="${f.id}">${f.name} [${locCode(f)}] · ${f.meters.toFixed(1)}m · £${f.price}/m</option>`).join('');
+}
+
+function setLang(l){curLang=l;['en','it','bi'].forEach(x=>gid('lng-'+x).classList.toggle('active',x===l));}
+
+async function genListing(){
+  const fid=gv('l-pick');if(!fid){alert('Seleziona un tessuto.');return;}
+  const f=stock.find(x=>x.id===fid);if(!f)return;
+  const platforms=['vinted','ebay','etsy'].filter(p=>gid('p-'+p).checked);
+  const notes=gv('l-notes');
+  const langNote=curLang==='en'?'Write in English only.':curLang==='it'?'Scrivi solo in italiano.':'Write bilingual: English first, then Italian, separated by ---';
+  const specs=['Brand: '+f.brand,'Collection: '+f.name,f.color&&'Colour: '+f.color,f.comp&&'Composition: '+f.comp,f.weight&&'Weight: '+f.weight+' g/m²',f.season&&'Season: '+f.season,'Available: '+f.meters.toFixed(1)+' m',f.width&&'Width: '+f.width+' cm',f.code&&'Code: '+f.code,notes&&'Notes: '+notes].filter(Boolean).join('\n');
+  const card={id:Date.now(),fabric:f,platforms,lang:curLang,text:'',loading:true};
+  listings.unshift(card);renderListings();
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:`You are writing a product listing for a premium fabric reseller (fabricsforcouture). ${langNote}\nStyle: concise, spec-forward, no brand storytelling. Bullet specs, 1 sentence handle/use, price+availability, end with "Shipped from Italy. Tracking included." No hashtags, no emojis. Under 120 words.\n\n${specs}\nPrice: £${f.price}/m · Available: ${f.meters.toFixed(1)} m`}]})});
+    const data=await res.json();card.text=data.content?.map(b=>b.text||'').join('')||'Errore.';
+  }catch(e){card.text='Errore di connessione. Controlla la connessione e riprova.';}
+  card.loading=false;renderListings();
+}
+
+function renderListings(){
+  const el=gid('listings-out');
+  if(!listings.length){el.innerHTML='';return;}
+  el.innerHTML=listings.map(c=>`
+    <div class="listing-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div style="font-weight:700;font-size:13px">${c.fabric.name}</div>
+          <div style="font-size:11px;color:var(--text2)">${c.platforms.join(' · ')} · ${c.lang==='bi'?'Bilingue':c.lang==='it'?'IT':'EN'}</div>
+        </div>
+        <button class="btn btn-sm" onclick="listings=listings.filter(x=>x.id!==${c.id});renderListings()">✕</button>
+      </div>
+      ${c.loading?`<div class="spinner-row"><div class="spinner"></div>Generando annuncio…</div>`:`
+        <div class="listing-text">${c.text}</div>
+        <button class="btn btn-sm" style="margin-top:8px;width:100%" onclick="cpyL(${c.id},this)">Copia testo</button>
+      `}
+    </div>`).join('');
+}
+
+function cpyL(id,btn){
+  const c=listings.find(x=>x.id===id);if(!c)return;
+  navigator.clipboard.writeText(c.text).then(()=>{btn.textContent='✓ Copiato!';setTimeout(()=>btn.textContent='Copia testo',2000);});
+}
+
+function quickListing(fid){gid('l-pick').value=fid;closeDet();nav('listing');}
+
+function exportCSV(){
+  const h=['ID','Nome','Brand','Comp','g/m2','Stagione','Colore','Metraggio','Larghezza','£/m','Posizione','Codice'];
+  const rows=stock.map(f=>[f.id,f.name,f.brand,f.comp,f.weight,f.season,f.color,f.meters,f.width,f.price,locCode(f),f.code].join(','));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([[h.join(','),...rows].join('\n')],{type:'text/csv'}));a.download='ffc-stock.csv';a.click();
+}
+
+function nav(v){
+  ['map','stock','listing','labels'].forEach(x=>{
+    gid('v-'+x).classList.toggle('active',x===v);
+    gid('n-'+x).classList.toggle('active',x===v);
+  });
+  if(v==='labels')renderLabels();
+  if(v==='listing')updListingPicker();
+  if(v==='stock')renderStockList();
+}
+
+updStats();renderWarehouse();renderStockList();updListingPicker();
+setTimeout(renderLabels,400);
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js');
+</script>
+</body>
+</html>
